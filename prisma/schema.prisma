@@ -1,0 +1,797 @@
+// packages/db/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String        @id @default(cuid())
+  discordId       String        @unique
+  username        String
+  globalTrust     Int           @default(100)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  guilds          GuildMember[]
+  teamMemberships TeamMember[]
+}
+
+model Guild {
+  id                     String   @id @default(cuid())
+  discordId              String   @unique
+  name                   String
+  iconHash               String?
+  memberCount            Int      @default(0)
+  botPresent              Boolean  @default(false)
+  botJoinedAt             DateTime?
+  lastSeenAt              DateTime?
+  prefix                 String   @default("!")
+  embedColor             String   @default("#5865F2")
+  aiEnabled              Boolean  @default(true)
+  personality            String?
+  moderationEnabled      Boolean  @default(false)
+  levelingEnabled        Boolean  @default(false)
+  musicEnabled           Boolean  @default(false)
+  djRoleIds              String[]
+  bannedWords            String[]
+  antiSpamEnabled        Boolean  @default(false)
+  antiScamEnabled        Boolean  @default(false)
+  scamSensitivity        String   @default("medium") // low, medium, high
+  logChannelId           String?
+  levelUpChannelId       String?
+  levelRewards           Json?
+  ticketsEnabled         Boolean  @default(false)
+  ticketCategoryId       String?
+  ticketSupportRoleIds   String[]
+  ticketPanelTitle       String   @default("🎫 Support Tickets")
+  ticketPanelDescription String   @default("Need help or have a question?\n\nClick the button below to open a **private support ticket**. Our team will be with you shortly.")
+  ticketPanelColor       String   @default("#6366f1")
+  ticketButtonLabel      String   @default("Open a Ticket")
+  ticketButtonEmoji      String   @default("🎫")
+  ticketReasons          Json? // Array of {label: string, value: string, emoji: string, description?: string}
+  ticketUseDropdown      Boolean  @default(false)
+  ticketPanels           Json? // Array of TicketPanel objects
+
+  // Ticket Transcripts
+  ticketTranscriptEnabled   Boolean @default(false)
+  ticketTranscriptChannelId String? // Channel where transcripts are sent
+
+  // AI Ticket Moderator
+  aiTicketModeratorEnabled Boolean  @default(false)
+  aiTicketStaffRoleIds     String[] @default([]) // Roles that disable AI when they write
+  aiTicketPersonality      String? // Custom AI personality for tickets
+  aiTicketMaxMessages      Int      @default(10) // Max AI messages per ticket
+  aiTicketAutoDelay        Int      @default(5) // Seconds before AI responds
+  aiTicketEscalateAfter    Int      @default(30) // Minutes before escalation
+  aiTicketConfidenceMin    Int      @default(60) // Min confidence % to not escalate
+  aiTicketEscalateRoleIds  String[] @default([]) // Role IDs to ping on escalation
+  aiTicketKnowledgeBase    Json? // FAQ, custom Q&A
+  aiTicketBlacklist        String[] @default([]) // Keywords to never respond to
+  aiTicketWhitelist        String[] @default([]) // Keywords to always escalate
+  aiTicketLanguage         String   @default("auto") // Response language
+
+  // Social Media Notifications
+  socialNotificationsEnabled Boolean  @default(false)
+  socialNotificationChannel  String? // Channel ID for notifications
+  socialNotificationRoles    String[] @default([]) // Role IDs to ping
+  socialNotificationMessage  String   @default("🔴 {user} is now live on {platform}!\n{url}") // Custom message template
+
+  // Verification System
+  verificationEnabled          Boolean @default(false)
+  verificationChannelId        String? // Channel where panel is sent
+  verificationRoleId           String? // Role to give after verification
+  verificationPanelTitle       String  @default("🔒 Server Verification")
+  verificationPanelDescription String  @default("Welcome to the server!\n\nClick the button below to verify yourself and gain access to the server.")
+  verificationPanelColor       String  @default("#10b981") // green
+  verificationButtonLabel      String  @default("Verify Me")
+  verificationButtonEmoji      String  @default("✅")
+  verificationCaptchaEnabled   Boolean @default(true)
+  verificationLogChannelId     String? // Log channel for verifications
+  verificationBannerUrl        String? // Optional banner image URL or data URI
+
+  // Welcome/Leave System
+  voiceWaitingEnabled   Boolean  @default(false)
+  voiceWaitingChannelId String?
+  voiceWaitingInterval  Int      @default(60) // Seconds between repeated announcements
+
+  welcomeEnabled          Boolean  @default(false)
+  welcomeChannelId        String? // Channel for welcome messages
+  welcomeMessage          String? // Custom welcome message ({user}, {server}, {memberCount})
+  welcomeEmbedEnabled     Boolean  @default(true)
+  welcomeEmbedTitle       String   @default("Welcome to {server}! 👋")
+  welcomeEmbedDescription String   @default("Hey {user}, welcome to **{server}**!\n\nYou are member **#{memberCount}**!")
+  welcomeEmbedColor       String   @default("#5865F2")
+  welcomeImageEnabled     Boolean  @default(true) // Generate canvas image
+  welcomeImageConfig      Json? // Custom image design settings
+  welcomeDMEnabled        Boolean  @default(false)
+  welcomeDMMessage        String? // DM message to send
+  autoRoleIds             String[] @default([]) // Roles to auto-assign
+
+  // Live server statistics voice channels
+  serverStatsEnabled      Boolean @default(false)
+  serverStatsCategoryId   String?
+  serverStatsMembers      Boolean @default(true)
+  serverStatsBoosts       Boolean @default(false)
+  serverStatsBots         Boolean @default(false)
+  serverStatsRoles        Boolean @default(false)
+  serverStatsChannels     Boolean @default(false)
+  serverStatsChannelIds   Json?
+  serverStatsTemplates    Json?
+
+  // Public, authenticated ban appeals
+  banAppealsEnabled Boolean @default(true)
+
+  leaveEnabled          Boolean @default(false)
+  leaveChannelId        String? // Channel for leave messages
+  leaveMessage          String? // Custom leave message ({user}, {server}, {memberCount})
+  leaveEmbedEnabled     Boolean @default(true)
+  leaveEmbedTitle       String  @default("Goodbye 👋")
+  leaveEmbedDescription String  @default("{user} has left the server.")
+  leaveEmbedColor       String  @default("#ef4444")
+
+  // Custom Emojis
+  customPollEmojis    String[] @default(["1️⃣", "2️⃣", "3️⃣", "4️⃣"]) // Custom emojis for polls (4 emojis)
+  customGiveawayEmoji String   @default("🎉") // Custom emoji for giveaway button
+
+  // AI Image Detection System
+  aiImageDetectionEnabled        Boolean  @default(false)
+  aiDetectionThreshold           Int      @default(70) // Confidence threshold 0-100
+  aiDetectionAction              String   @default("log") // log, delete, warn
+  aiDetectionLogChannelId        String? // Channel to log detections
+  aiDetectionDeleteChannelIds    String[] @default([]) // Channels to scan and delete
+  aiDetectionWhitelistRoleIds    String[] @default([]) // Roles that bypass detection
+  aiDetectionRequireLabel        Boolean  @default(false) // Only flag images with specific AI labels
+
+  // Advanced Auto-Mod System
+  autoModEnabled Boolean @default(false)
+
+  // Ban Evasion Detection System
+  banEvasionEnabled             Boolean  @default(false)
+  banEvasionConfidenceMin       Int      @default(85) // Minimum confidence to alert (85%)
+  banEvasionAutoAction          String   @default("alert") // alert, rate_limit, auto_ban
+  banEvasionRequireVerification Boolean  @default(true) // Require fingerprint verification on join
+  banEvasionWhitelistRoles      String[] @default([]) // Roles that bypass detection
+  banEvasionLogChannelId        String? // Channel for evasion alerts
+
+  // Profile Picture History Tracker
+  avatarTrackingEnabled Boolean  @default(false)
+  avatarHistoryLimit    Int      @default(10) // How many avatars to store per user
+  avatarLogChannelId    String? // Channel to log avatar changes
+
+  // Copy-Cat / Impersonation Detector
+  impersonationEnabled    Boolean  @default(false)
+  impersonationSensitivity String  @default("medium") // low, medium, high
+  impersonationAutoAction String   @default("nickname") // alert, nickname, kick, ban
+  impersonationLogChannelId String? // Channel for impersonation alerts
+  protectedUserIds        String[] @default([]) // Staff/Important users to protect
+
+  // Ghost Member Cleaner
+  ghostCleanerEnabled     Boolean  @default(false)
+  ghostInactiveDays       Int      @default(90) // Days of inactivity before marked as ghost
+  ghostKickEnabled        Boolean  @default(false) // Actually kick ghost members
+  ghostWarnBeforeKick     Boolean  @default(true) // Send DM warning before kick
+  ghostWarningDays        Int      @default(7) // Days between warning and kick
+  ghostWhitelistRoles     String[] @default([]) // Roles protected from ghost kick (boosters, etc.)
+  ghostLogChannelId       String? // Channel to log ghost member actions
+
+  // Spam Detection
+  autoModSpamEnabled         Boolean @default(true)
+  autoModSpamMaxMessages     Int     @default(5) // Max messages
+  autoModSpamTimeframe       Int     @default(5) // In seconds
+  autoModSpamAction          String  @default("delete") // delete, warn, timeout, kick, ban
+  autoModSpamTimeoutDuration Int     @default(300) // seconds (5 min)
+
+  // Caps Filter
+  autoModCapsEnabled   Boolean @default(false)
+  autoModCapsThreshold Int     @default(70) // Percentage of caps
+  autoModCapsMinLength Int     @default(10) // Minimum message length to check
+  autoModCapsAction    String  @default("delete")
+
+  // Link Filter
+  autoModLinksEnabled   Boolean  @default(false)
+  autoModLinksWhitelist String[] @default([]) // Allowed domains
+  autoModLinksAction    String   @default("delete")
+
+  // Discord Invite Filter
+  autoModInvitesEnabled Boolean @default(false)
+  autoModInvitesAction  String  @default("delete")
+
+  // Mention Spam
+  autoModMentionsEnabled Boolean @default(false)
+  autoModMentionsMax     Int     @default(5) // Max mentions per message
+  autoModMentionsAction  String  @default("delete")
+
+  // Emoji Spam
+  autoModEmojisEnabled Boolean @default(false)
+  autoModEmojisMax     Int     @default(10) // Max emojis per message
+  autoModEmojisAction  String  @default("delete")
+
+  // Attachment Filter
+  autoModAttachmentsEnabled Boolean @default(false)
+  autoModAttachmentsAction  String  @default("delete")
+
+  // Whitelist
+  autoModWhitelistChannels String[] @default([]) // Channels where auto-mod is disabled
+  autoModWhitelistRoles    String[] @default([]) // Roles that bypass auto-mod
+
+  // Duplicate Messages
+  autoModDuplicatesEnabled   Boolean @default(false)
+  autoModDuplicatesTimeframe Int     @default(60) // seconds
+  autoModDuplicatesAction    String  @default("delete")
+
+  // Anti-Raid System
+  antiRaidEnabled             Boolean  @default(false)
+  antiRaidJoinThreshold       Int      @default(5) // Max joins
+  antiRaidJoinTimeframe       Int      @default(10) // In seconds
+  antiRaidAction              String   @default("kick") // kick, ban, timeout, quarantine
+  antiRaidTimeoutMinutes      Int      @default(60) // Minutes if timeout selected
+  antiRaidQuarantineRoleId    String?  // Role to assign if quarantine selected
+  antiRaidMinAccountAgeDays   Int      @default(3) // Min days old (auto-flag young accounts)
+  antiRaidDefaultAvatarKick   Boolean  @default(true) // Auto-kick/quarantine accounts with no custom avatar during raid
+  antiRaidAutoLockdown        Boolean  @default(true) // Lock text channels when raid is detected
+  antiRaidBlockUserApps       Boolean  @default(true) // Block external/user app interactions spam
+  antiRaidBlockWebhooks       Boolean  @default(true) // Block unauthorized webhook spam
+  antiRaidLogChannelId        String?  // Channel for raid alerts
+  antiRaidLockdownActive      Boolean  @default(false) // Server currently in lockdown mode
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  members         GuildMember[]
+  auditLogs       AuditLog[]
+  ticketMessages  TicketMessage[]
+  ticketAnalytics TicketAnalytics[]
+  teamMembers     TeamMember[]
+  teamInvites     TeamInvite[]
+  socialAccounts  SocialAccount[]
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  guildId   String
+  action    String // e.g. "MODULE_TOGGLE", "TICKET_OPEN", "CLEAN_WORDS", "COMMAND_EXECUTED", "MESSAGE_SENT", "AI_TOKENS_USED"
+  userId    String? // The user who triggered
+  userName  String? // Username of triggerer
+  details   String // Text description e.g. "Enabled Moderation Module"
+  metadata  Json? // Additional data (tokens, channel, etc.)
+  createdAt DateTime @default(now())
+
+  guild Guild @relation(fields: [guildId], references: [discordId], onDelete: Cascade)
+
+  @@index([guildId, createdAt])
+  @@index([guildId, action, createdAt])
+}
+
+model GuildMember {
+  id      String @id @default(cuid())
+  userId  String
+  guildId String
+  xp      Int    @default(0)
+  level   Int    @default(1)
+  coins   Int    @default(0)
+
+  // Advanced Leveling System
+  totalMessages Int       @default(0) // Total messages sent
+  currentStreak Int       @default(0) // Daily activity streak
+  lastActiveAt  DateTime? // Last activity timestamp
+  achievements  Json?     @default("[]") // Array of achievement IDs
+
+  user  User  @relation(fields: [userId], references: [id])
+  guild Guild @relation(fields: [guildId], references: [id])
+
+  @@unique([userId, guildId])
+  @@index([guildId, xp])
+  @@index([guildId])
+}
+
+model TicketMessage {
+  id           String   @id @default(cuid())
+  guildId      String
+  ticketId     String // Discord channel ID
+  userId       String
+  userName     String
+  content      String   @db.Text
+  isAI         Boolean  @default(false)
+  aiConfidence Float? // 0-100
+  createdAt    DateTime @default(now())
+
+  guild Guild @relation(fields: [guildId], references: [discordId], onDelete: Cascade)
+
+  @@index([guildId, ticketId])
+  @@index([ticketId, createdAt])
+}
+
+model TicketAnalytics {
+  id               String    @id @default(cuid())
+  guildId          String
+  ticketId         String // Discord channel ID
+  userId           String // Ticket creator
+  userName         String
+  category         String? // Bug, Support, etc.
+  priority         String? // Low, Medium, High, Urgent
+  aiHandled        Boolean   @default(false)
+  aiResolved       Boolean   @default(false)
+  escalated        Boolean   @default(false)
+  escalationReason String?
+  responseTime     Int? // seconds until first response
+  messageCount     Int       @default(0)
+  aiMessageCount   Int       @default(0)
+  userSatisfaction Int? // 1-5 stars
+  createdAt        DateTime  @default(now())
+  closedAt         DateTime?
+
+  guild Guild @relation(fields: [guildId], references: [discordId], onDelete: Cascade)
+
+  @@index([guildId, createdAt])
+  @@index([ticketId])
+}
+
+model TeamMember {
+  id          String   @id @default(cuid())
+  guildId     String
+  userId      String
+  role        String // "owner", "admin", "moderator", "event_manager", "support", "viewer"
+  permissions Json // Granular permissions object
+  invitedBy   String? // Discord ID of who invited them
+  status      String   @default("pending") // "pending", "active", "declined"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  guild Guild @relation(fields: [guildId], references: [discordId], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [discordId], onDelete: Cascade)
+
+  @@unique([guildId, userId])
+  @@index([guildId])
+  @@index([userId])
+  @@index([status])
+}
+
+model TeamInvite {
+  id          String   @id @default(cuid())
+  guildId     String
+  tokenHash   String   @unique
+  role        String
+  permissions Json
+  invitedBy   String
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  acceptedBy  String?
+  createdAt   DateTime @default(now())
+
+  guild Guild @relation(fields: [guildId], references: [discordId], onDelete: Cascade)
+
+  @@index([guildId, createdAt])
+  @@index([expiresAt])
+}
+
+model SocialAccount {
+  id          String   @id @default(cuid())
+  guildId     String
+  platform    String // "twitch", "youtube", "tiktok", "kick"
+  username    String // Platform username
+  userId      String? // Platform user ID (for API)
+  isLive      Boolean  @default(false)
+  lastChecked DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  guild Guild @relation(fields: [guildId], references: [discordId], onDelete: Cascade)
+
+  @@unique([guildId, platform, username])
+  @@index([guildId])
+  @@index([platform])
+}
+
+model Giveaway {
+  id        String  @id @default(cuid())
+  guildId   String
+  channelId String // Channel where giveaway is posted
+  messageId String? // Message ID of the giveaway embed
+  hostId    String // User who created the giveaway
+  hostName  String // Username of host
+
+  // Giveaway Details
+  prize       String // What they're winning
+  description String? @db.Text // Optional description
+  winnerCount Int     @default(1) // How many winners
+
+  // Requirements
+  requiredRoleIds    String[] @default([]) // Required roles to enter
+  requiredLevel      Int? // Minimum level requirement
+  requireBoost       Boolean  @default(false) // Must be server booster
+  blacklistedRoleIds String[] @default([]) // Roles that cannot enter
+
+  // Timing
+  duration Int // Duration in seconds
+  endsAt   DateTime // When it ends
+  ended    Boolean  @default(false)
+
+  // Winners
+  winnerIds   String[] @default([]) // Discord IDs of winners
+  winnerNames String[] @default([]) // Usernames of winners
+
+  // Participants
+  participants String[] @default([]) // Discord IDs of all participants
+
+  // Settings
+  color        String  @default("#5865F2") // Embed color
+  thumbnailUrl String? // Optional thumbnail image
+  imageUrl     String? // Optional image
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([guildId, ended])
+  @@index([endsAt])
+  @@index([messageId])
+}
+
+model Poll {
+  id          String @id @default(cuid())
+  guildId     String
+  channelId   String // Channel where poll is posted
+  messageId   String @unique // Message ID of the poll
+  creatorId   String // User who created the poll
+  creatorName String // Username of creator
+
+  // Poll Details
+  question String   @db.Text // Poll question
+  options  String[] // Poll options (2-4)
+
+  // Results (stored as JSON for flexibility)
+  // Format: [{ option: 'Option 1', votes: ['userId1', 'userId2'] }]
+  votes Json @default("[]")
+
+  // Settings
+  ended  Boolean   @default(false)
+  endsAt DateTime? // Optional: Auto-close poll
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([guildId])
+  @@index([messageId])
+  @@index([createdAt])
+}
+
+// ========== BAN EVASION DETECTION SYSTEM ==========
+
+model UserFingerprint {
+  id      String @id @default(cuid())
+  userId  String // Discord user ID
+  guildId String // Guild ID
+
+  // Device Fingerprint (ThumbmarkJS)
+  fingerprint     String // Unique device hash
+  fingerprintData Json? // Full fingerprint component data
+  networkHash     String? // Guild-scoped HMAC of the verification request IP; never the raw IP
+
+  // Behavioral Profile
+  avgTypingSpeed   Float? // Average WPM (words per minute)
+  avgMessageLength Float? // Average message length
+  commonEmojis     String[] @default([]) // Top 10 most used emojis
+  commonWords      String[] @default([]) // Top 20 most used words (normalized)
+  activityPattern  Json? // {hourly: [...], daily: [...]} activity heatmap
+
+  // Metadata
+  verified     Boolean   @default(false) // Has completed verification
+  verifiedAt   DateTime?
+  lastSeen     DateTime  @default(now())
+  messageCount Int       @default(0) // Total messages tracked
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, guildId])
+  @@index([guildId])
+  @@index([fingerprint])
+  @@index([guildId, networkHash])
+}
+
+model VerificationChallenge {
+  tokenHash        String   @id
+  interactionToken String?
+  userId    String
+  guildId   String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([guildId, userId, expiresAt])
+  @@index([expiresAt])
+}
+
+model BotApiNonce {
+  nonce     String   @id
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
+model DiscordOAuthCredential {
+  userId                 String   @id
+  accessTokenEncrypted   String
+  refreshTokenEncrypted  String?
+  expiresAt              DateTime?
+  updatedAt              DateTime @updatedAt
+}
+
+model BannedUser {
+  id       String @id @default(cuid())
+  userId   String // Discord user ID
+  guildId  String // Guild ID
+  username String // Username at time of ban
+
+  // Stored Fingerprint & Behavioral Data
+  fingerprint     String? // Device fingerprint at time of ban
+  fingerprintData Json? // Full fingerprint components
+  networkHash     String? // Guild-scoped HMAC of the verification request IP; never the raw IP
+  behavioralData  Json? // Stored behavioral profile
+
+  // Ban Details
+  reason       String? @db.Text
+  bannedBy     String // Moderator Discord ID
+  bannedByName String // Moderator username
+
+  // Evasion Tracking
+  evasionAttempts Int       @default(0) // Number of detected alt accounts
+  lastAttemptAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, guildId])
+  @@index([guildId])
+  @@index([fingerprint])
+  @@index([guildId, networkHash])
+}
+
+model BanAppeal {
+  id             String   @id @default(cuid())
+  guildId        String
+  userId         String
+  username       String
+  message        String   @db.Text
+  banReason      String?  @db.Text
+  status         String   @default("pending") // pending, approved, denied
+  reviewNote     String?  @db.Text
+  reviewedBy     String?
+  reviewedByName String?
+  reviewedAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([guildId, status, createdAt])
+  @@index([guildId, userId, createdAt])
+}
+
+model BanEvasionDetection {
+  id              String @id @default(cuid())
+  guildId         String // Guild ID
+  suspectUserId   String // New/suspect user Discord ID
+  suspectUsername String // Suspect username
+  bannedUserId    String // Original banned user Discord ID
+  bannedUsername  String // Original banned username
+
+  // Detection Confidence
+  confidenceScore Float // 0-100 overall confidence
+
+  // Confidence Breakdown
+  fingerprintMatch Float @default(0) // 0-100
+  behavioralMatch  Float @default(0) // 0-100
+  networkMatch     Float @default(0) // 0-100
+
+  // Detection Signals
+  signals Json // Detailed breakdown of what matched
+
+  // Status
+  status         String    @default("pending") // pending, confirmed, false_positive, ignored
+  reviewedBy     String? // Moderator Discord ID
+  reviewedByName String? // Moderator username
+  reviewedAt     DateTime?
+  reviewNotes    String?   @db.Text
+
+  // Action Taken
+  actionTaken String? // banned, rate_limited, warned, none
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([guildId, status])
+  @@index([suspectUserId])
+  @@index([bannedUserId])
+  @@index([createdAt])
+}
+
+model MessageAnalytics {
+  id        String @id @default(cuid())
+  userId    String // Discord user ID
+  guildId   String // Guild ID
+  channelId String // Channel ID
+
+  // Message Content Analysis
+  messageLength Int // Character count
+  wordCount     Int // Word count
+  emojis        String[] @default([]) // Emojis used
+  mentions      Int      @default(0) // Number of mentions
+
+  // Timing Analysis
+  typingSpeed   Float? // Estimated WPM (if calculated)
+  timestamp     DateTime // When message was sent
+  timeSinceLast Int? // Seconds since last message from this user
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, guildId])
+  @@index([guildId, timestamp])
+}
+
+// ========== PROFILE PICTURE HISTORY TRACKER ==========
+
+model AvatarHistory {
+  id        String   @id @default(cuid())
+  userId    String   // Discord user ID
+  guildId   String   // Guild ID where change was detected
+  username  String   // Username at time of change
+  
+  // Avatar Data
+  avatarUrl String   @db.Text // Full Discord CDN URL
+  avatarHash String? // Discord avatar hash
+  
+  // Detection
+  detectedAt DateTime @default(now())
+  
+  @@index([userId, guildId])
+  @@index([userId, detectedAt])
+  @@index([guildId])
+}
+
+// ========== COPY-CAT / IMPERSONATION DETECTOR ==========
+
+model StaffProfile {
+  id        String   @id @default(cuid())
+  userId    String   // Staff Discord user ID
+  guildId   String   // Guild ID
+  username  String   // Current username
+  displayName String? // Current display name/nickname
+  
+  // Avatar Data
+  avatarUrl  String?  @db.Text
+  avatarHash String?
+  
+  // Protection
+  protected Boolean @default(true) // Enable impersonation detection for this user
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([userId, guildId])
+  @@index([guildId])
+}
+
+model ImpersonationDetection {
+  id             String   @id @default(cuid())
+  guildId        String   // Guild ID
+  suspectUserId  String   // Potential impersonator Discord ID
+  suspectUsername String  // Their username
+  targetUserId   String   // Staff member being impersonated
+  targetUsername String   // Staff username
+  
+  // Detection Details
+  similarityScore Float   // 0-100 (username + avatar similarity)
+  usernameSimilarity Float // 0-100
+  avatarSimilarity   Float? // 0-100 (if avatar comparison enabled)
+  
+  // What matched
+  matchReasons String[] @default([]) // ["similar_username", "similar_avatar", "identical_displayname"]
+  
+  // Status
+  status        String   @default("pending") // pending, confirmed, false_positive, resolved
+  reviewedBy    String?  // Moderator Discord ID
+  reviewedAt    DateTime?
+  actionTaken   String?  // nicknamed, kicked, banned, warned, none
+  
+  detectedAt DateTime @default(now())
+  
+  @@index([guildId, status])
+  @@index([suspectUserId])
+  @@index([targetUserId])
+  @@index([detectedAt])
+}
+
+// ========== GHOST MEMBER CLEANER ==========
+
+model InactiveMember {
+  id             String   @id @default(cuid())
+  userId         String   // Discord user ID
+  guildId        String   // Guild ID
+  username       String   // Username
+  
+  // Activity Data
+  joinedAt       DateTime // When they joined the server
+  lastMessageAt  DateTime? // Last message sent (null if never)
+  messageCount   Int      @default(0) // Total messages sent
+  lastVoiceAt    DateTime? // Last voice activity
+  voiceMinutes   Int      @default(0) // Total voice time in minutes
+  
+  // Status
+  isInactive     Boolean  @default(false) // True if meets inactivity criteria
+  inactiveDays   Int      @default(0) // Days since last activity
+  
+  // Protection
+  isWhitelisted  Boolean  @default(false) // Protected from auto-kick
+  whitelistReason String? // Why they're whitelisted (booster, donor, etc.)
+  
+  // Kick Action
+  kickScheduled  Boolean   @default(false)
+  kickScheduledAt DateTime?
+  kickWarned     Boolean   @default(false) // DM sent warning about kick
+  
+  lastChecked    DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  @@unique([userId, guildId])
+  @@index([guildId, isInactive])
+  @@index([guildId, kickScheduled])
+}
+
+// ========== AI IMAGE DETECTION ==========
+
+model AIImageDetection {
+  id          String   @id @default(cuid())
+  guildId     String   // Guild ID
+  channelId   String   // Channel where image was posted
+  messageId   String   // Message ID
+  userId      String   // User who posted
+  username    String   // Username
+  
+  // Detection Data
+  imageUrl    String   @db.Text // Original image URL
+  confidence  Float    // 0-100 confidence score
+  aiLabels    String[] @default([]) // Detected AI labels (e.g., "midjourney", "stable-diffusion")
+  
+  // Action Taken
+  actionTaken String   @default("log") // log, deleted, warned
+  
+  // Metadata
+  detectedAt  DateTime @default(now())
+  
+  @@index([guildId, detectedAt])
+  @@index([guildId, confidence])
+  @@index([messageId])
+}
+
+// ─── Sticky Punishment System ─────────────────────────────────────────────────
+// Tracks active punishments so they can be re-applied if a user leaves and rejoins
+
+model PendingPunishment {
+  id        String   @id @default(cuid())
+  guildId   String
+  userId    String
+  type      String   // "timeout" | "mute_role"
+  reason    String   @default("No reason provided.")
+  
+  // For timeout: when the timeout expires (absolute timestamp)
+  expiresAt DateTime?
+  
+  // For mute roles: which role(s) to re-apply
+  roleIds   String[] @default([])
+  
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Whether the punishment has been re-applied after rejoin
+  reapplied    Boolean  @default(false)
+  reappliedAt  DateTime?
+  reapplyCount Int      @default(0)
+  
+  @@unique([guildId, userId, type])
+  @@index([guildId, userId])
+  @@index([guildId, reapplied])
+}
