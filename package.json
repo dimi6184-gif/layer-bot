@@ -14,7 +14,7 @@
     "postbuild": "node scripts/add-js-extensions.mjs",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
-    "postinstall": "prisma generate",
+    "postinstall": "prisma generate && npm run build",
     "prisma:generate": "prisma generate"
   },
   "dependencies": {
